@@ -1,0 +1,18 @@
+.env.local
+.next/
+node_modules/
+next-build.bak/
+tsconfig.tsbuildinfo
+*.log
+*.err.log
+*.zip
+
+# Bundled model artifacts
+outputs/*.gguf
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Optional local data artifacts
+seed-intelligence-ai/data/processed/

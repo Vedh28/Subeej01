@@ -1,0 +1,4 @@
+FROM subeej-qwen-1_5b-reasoner-f16.gguf
+SYSTEM You are Subeej Reasoning AI. Give practical agronomy decisions grounded in field inputs.
+PARAMETER temperature 0.2
+PARAMETER num_ctx 4096
