@@ -134,16 +134,18 @@ const CROP_KEYWORDS = [
 ] as const;
 
 const SOIL_KEYWORDS = [
+  "medium black soil",
+  "alluvial soil",
+  "sandy loam",
+  "sandy soil",
+  "clay loam",
+  "clay soil",
   "black soil",
   "red soil",
   "loamy soil",
   "loam",
-  "clay soil",
-  "clay loam",
-  "sandy soil",
-  "sandy loam",
-  "alluvial soil",
-  "medium black soil"
+  "clayey",
+  "alluvial"
 ] as const;
 
 const STATES = [
@@ -195,6 +197,19 @@ const GENERIC_FILLER_PATTERNS = [
   /with the details already available/i
 ];
 
+const NON_LOCATION_PHRASES = [
+  "irrigated land",
+  "rainfed land",
+  "my field",
+  "the field",
+  "field",
+  "land",
+  "loamy soil",
+  "sandy loam",
+  "clay loam",
+  "black soil"
+];
+
 function generateSessionId() {
   return `chat_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -230,15 +245,174 @@ export function detectIntent(text: string): ChatIntent {
   if (/\b(weather|temperature|rainfall|humidity|forecast)\b/.test(text)) return "weather_related";
   if (/\b(yield|production|estimate|acre|acres|hectare|hectares)\b/.test(text)) return "yield_estimation";
   if (/\b(soil and seed|seed suitable|soil suitable|soil and seed suitable|best soil and seed)\b/.test(text)) return "seed_soil_match";
-  if (/\b(seed variety|which seed|best seed|seed recommendation|suggest seed)\b/.test(text)) return "seed_recommendation";
-  if (/\b(which crop|recommend crop|suitable crop|what should i grow|best crop)\b/.test(text)) return "crop_recommendation";
-  if (/\b(which soil|what soil|best soil|soil required|suitable soil|is this soil good|soil is suitable|my soil is suitable|soil suitable for)\b/.test(text)) return "soil_suitability";
+  if (
+    /\b(seed variety|which seed|best seed|seed recommendation|suggest seed|recommend seed)\b/.test(text) ||
+    (/\b(seed|variety)\b/.test(text) && /\b(recommend|suggest|best|suits?|fit|good)\b/.test(text)) ||
+    /\brecommend\s+(?:a\s+)?[a-z\s]+\s+seed\b/.test(text) ||
+    /\bsuggest\s+seed\s+variety\b/.test(text)
+  ) {
+    return "seed_recommendation";
+  }
+  if (
+    /\b(which crop|which crops|recommend crop|recommend crops|suitable crop|suitable crops|what should i grow|best crop|best crops)\b/.test(text) ||
+    (/\b(crop|crops)\b/.test(text) && /\b(best|perform best|good|suitable|recommend|grow)\b/.test(text)) ||
+    (!/\bseed|seeds\b/.test(text) && /\b(soil|loam|clay|sandy|alluvial|black soil)\b/.test(text) && /\b(kharif|rabi|zaid)\b/.test(text) && /\bwhat|which\b/.test(text))
+  ) {
+    return "crop_recommendation";
+  }
+  if (
+    /\b(which soil|what soil|best soil|soil required|suitable soil|is this soil good|soil is suitable|my soil is suitable|soil suitable for)\b/.test(text) ||
+    (/\b(soil|loam|clay|sandy|alluvial|black soil)\b/.test(text) && /\b(suitable for|good for|best for)\b/.test(text)) ||
+    (/\bcompare\b/.test(text) && /\bsoil\b/.test(text)) ||
+    /\bis\s+[a-z\s]+soil\s+(?:suitable|good)\s+for\b/.test(text)
+  ) {
+    return "soil_suitability";
+  }
   if (/\b(season|kharif|rabi|zaid|sowing time|when to sow)\b/.test(text)) return "season_recommendation";
   return "unknown";
 }
 
 function findFirstKeyword(text: string, words: readonly string[]) {
-  return words.find((word) => text.includes(word)) || "";
+  return [...words]
+    .filter((word) => text.includes(word))
+    .sort((left, right) => right.length - left.length)[0] || "";
+}
+
+function isBroadCropSelectionQuery(text: string, entities: Partial<ChatSessionMemory>) {
+  if (entities.crop) return false;
+  return (
+    /\b(which crops|what crops|recommend crops|best crops|suitable crops)\b/.test(text) ||
+    (/\b(crops?)\b/.test(text) && /\b(fit|fit it|perform best|grow|suitable|recommend)\b/.test(text)) ||
+    (/\bwhat should i grow\b/.test(text) && !/\bfor\s+[a-z]+\b/.test(text))
+  );
+}
+
+function textIncludes(haystack: string, needle: string) {
+  const normalizedHaystack = normalizeText(haystack);
+  const normalizedNeedle = normalizeText(needle);
+  return Boolean(normalizedNeedle && normalizedHaystack.includes(normalizedNeedle));
+}
+
+function isLikelyLocationPhrase(value: string) {
+  const normalized = normalizeText(value);
+  if (!normalized) return false;
+  if (NON_LOCATION_PHRASES.includes(normalized)) return false;
+  if (/\bsoil|land|field|irrigated|rainfed|moisture\b/.test(normalized)) return false;
+  return true;
+}
+
+function extractMentionedSoils(text: string) {
+  return Array.from(
+    new Set(
+      SOIL_KEYWORDS.filter((soil) => textIncludes(text, soil))
+    )
+  ).slice(0, 3);
+}
+
+function buildSoilComparisonResponse(session: ChatSessionMemory, mentionedSoils: string[], responseMode: ResponseMode) {
+  if (!session.crop || mentionedSoils.length < 2) return null;
+  const agronomy = explainAgronomicFit(session.crop, {
+    seed_name: session.seed || "",
+    seed_variety: session.seed || "",
+    seed_type: "",
+    seed_quality: "",
+    suitable_land_type_for_seed: "",
+    field_quality: session.land_quality || "",
+    field_history_or_crops: session.previous_crop || "",
+    field_composition: "",
+    moisture: 0,
+    humidity: 0,
+    rainfall: 0,
+    temperature: 0,
+    state: session.location || "",
+    district: session.location || "",
+    suitable_crop_for_field: session.crop,
+    season: session.season || ""
+  });
+
+  if (!agronomy) return null;
+
+  const preferredSoils = agronomy.soilTypes.map((soil) => normalizeText(soil));
+  const [firstSoil, secondSoil] = mentionedSoils;
+  const firstMatches = preferredSoils.some((soil) => soil.includes(normalizeText(firstSoil)) || normalizeText(firstSoil).includes(soil));
+  const secondMatches = preferredSoils.some((soil) => soil.includes(normalizeText(secondSoil)) || normalizeText(secondSoil).includes(soil));
+  const cropLabel = titleCase(session.crop);
+  const firstLabel = titleCase(firstSoil);
+  const secondLabel = titleCase(secondSoil);
+
+  let recommendation = `${cropLabel} suitability depends on drainage, moisture retention, and season fit.`;
+  if (firstMatches && !secondMatches) {
+    recommendation = `For ${cropLabel}, ${firstLabel} is better than ${secondLabel}.`;
+  } else if (!firstMatches && secondMatches) {
+    recommendation = `For ${cropLabel}, ${secondLabel} is better than ${firstLabel}.`;
+  } else if (firstMatches && secondMatches) {
+    recommendation = `For ${cropLabel}, both ${firstLabel} and ${secondLabel} can work, but management depends on drainage and moisture.`;
+  }
+
+  const why = agronomy.evaluation.notes.join(" ");
+  const finalAnswer = `${recommendation} ${why}`.trim();
+
+  return {
+    intent: "soil_suitability" as ChatIntent,
+    response_mode: responseMode,
+    title: `${cropLabel} Soil Comparison`,
+    recommendation,
+    suitable_conditions: [firstLabel, secondLabel, ...agronomy.soilTypes.slice(0, 2).map((soil) => titleCase(soil))].slice(0, 6),
+    why,
+    missing_details_needed: [],
+    follow_up_question: "",
+    final_answer: finalAnswer,
+    quick_actions: QUICK_ACTIONS,
+    known_fields: Object.fromEntries(
+      Object.entries(session).filter(([, value]) => value !== null && value !== false && String(value).trim() !== "")
+    )
+  };
+}
+
+function collectDatasetMatches(
+  rows: Array<{
+    crop: string;
+    recommended_crop: string;
+    recommended_seed?: string;
+    season?: string;
+    soil_type?: string;
+    field_composition?: string;
+    district?: string;
+    state?: string;
+    yield?: number;
+  }>,
+  session: ChatSessionMemory
+) {
+  const crop = session.crop || "";
+  const cropFiltered = rows.filter((row) => {
+    const cropOk = crop
+      ? [row.crop, row.recommended_crop].some((value) => textIncludes(value, crop))
+      : true;
+    const locationOk = session.location ? rowMatchesLocation(row, session.location) : true;
+    return cropOk && locationOk;
+  });
+
+  const strictFiltered = cropFiltered.filter((row) => {
+    const seasonOk = session.season ? textIncludes(String(row.season || ""), session.season) : true;
+    const soilOk = session.soil_type
+      ? textIncludes(`${row.soil_type || ""} ${row.field_composition || ""}`, session.soil_type)
+      : true;
+    return seasonOk && soilOk;
+  });
+
+  if (strictFiltered.length) return strictFiltered;
+
+  const seasonFiltered = cropFiltered.filter((row) =>
+    session.season ? textIncludes(String(row.season || ""), session.season) : true
+  );
+  if (seasonFiltered.length) return seasonFiltered;
+
+  const soilFiltered = cropFiltered.filter((row) =>
+    session.soil_type ? textIncludes(`${row.soil_type || ""} ${row.field_composition || ""}`, session.soil_type) : true
+  );
+  if (soilFiltered.length) return soilFiltered;
+
+  return cropFiltered;
 }
 
 export function extractEntities(text: string) {
@@ -295,7 +469,9 @@ export function extractEntities(text: string) {
     const stateText = state ? `, ${titleCase(state)}` : "";
     entities.location = `${district} District${stateText}`;
   } else if (plainLocationMatch) {
-    const locationParts = [plainLocationMatch[1], plainLocationMatch[2] || state].filter(Boolean).map((part) => titleCase(String(part)));
+    const locationParts = [plainLocationMatch[1], plainLocationMatch[2] || state]
+      .filter((part) => Boolean(part) && isLikelyLocationPhrase(String(part)))
+      .map((part) => titleCase(String(part)));
     if (locationParts.length) entities.location = locationParts.join(", ");
   } else if (state) {
     entities.location = titleCase(state);
@@ -382,7 +558,7 @@ function rowMatchesLocation(row: { district?: string; state?: string }, location
 
 function rankSeedCandidates(
   rows: Array<{
-    recommended_seed: string;
+    recommended_seed?: string;
     seed_type?: string;
     seed_variety?: string;
     season?: string;
@@ -486,6 +662,59 @@ function rankSoilCandidates(
     .sort((left, right) => right.score - left.score || right.avgYield - left.avgYield || right.count - left.count);
 }
 
+function rankCropCandidates(
+  rows: Array<{
+    crop?: string;
+    recommended_crop?: string;
+    season?: string;
+    soil_type?: string;
+    field_composition?: string;
+    yield?: number;
+  }>,
+  session: ChatSessionMemory
+) {
+  const candidateMap = new Map<string, { crop: string; score: number; count: number; totalYield: number }>();
+
+  for (const row of rows) {
+    const crop = String(row.recommended_crop || row.crop || "").trim();
+    if (!crop) continue;
+    if (!candidateMap.has(crop)) {
+      candidateMap.set(crop, {
+        crop,
+        score: 0,
+        count: 0,
+        totalYield: 0
+      });
+    }
+
+    const candidate = candidateMap.get(crop)!;
+    candidate.count += 1;
+    candidate.totalYield += Number(row.yield || 0);
+
+    let score = 1;
+    if (session.season && textIncludes(String(row.season || ""), session.season)) {
+      score += 4;
+    }
+
+    if (session.soil_type && textIncludes(`${row.soil_type || ""} ${row.field_composition || ""}`, session.soil_type)) {
+      score += 4;
+    }
+
+    if (Number.isFinite(row.yield)) {
+      score += Number(row.yield) / 1000;
+    }
+
+    candidate.score += score;
+  }
+
+  return Array.from(candidateMap.values())
+    .map((item) => ({
+      ...item,
+      avgYield: item.count ? item.totalYield / item.count : 0
+    }))
+    .sort((left, right) => right.score - left.score || right.avgYield - left.avgYield || right.count - left.count);
+}
+
 async function buildKnowledgeContext(intent: ChatIntent, session: ChatSessionMemory) {
   const facts: string[] = [];
   const crop = session.crop || "";
@@ -525,26 +754,36 @@ async function buildKnowledgeContext(intent: ChatIntent, session: ChatSessionMem
     ["crop_recommendation", "seed_recommendation", "soil_suitability", "seed_soil_match", "season_recommendation", "yield_estimation"].includes(intent)
   ) {
     const rows = await loadDatasetRows();
-    const filtered = rows.filter((row) => {
-      const cropOk = crop ? [row.crop, row.recommended_crop].some((value) => normalizeText(value).includes(normalizeText(crop))) : true;
-      const locationOk = session.location ? rowMatchesLocation(row, session.location) : true;
-      return cropOk && locationOk;
-    });
+    const filtered = collectDatasetMatches(rows, session);
 
     const topRows = filtered.slice(0, 8);
     if (topRows.length) {
       const soils = Array.from(new Set(topRows.map((row) => row.soil_type || row.field_composition).filter(Boolean))).slice(0, 5);
-      const seeds = Array.from(new Set(topRows.map((row) => row.recommended_seed).filter(Boolean))).slice(0, 5);
+      const seeds =
+        intent === "crop_recommendation" && !crop
+          ? []
+          : Array.from(new Set(topRows.map((row) => row.recommended_seed).filter(Boolean))).slice(0, 5);
       const seasons = Array.from(new Set(topRows.map((row) => row.season).filter(Boolean))).slice(0, 4);
-      const yieldValues = topRows.map((row) => row.yield).filter((value) => Number.isFinite(value));
+      const yieldValues = topRows
+        .map((row) => row.yield)
+        .filter((value): value is number => Number.isFinite(value));
+      const crops = Array.from(new Set(topRows.map((row) => row.recommended_crop || row.crop).filter(Boolean))).slice(0, 5);
 
       if (soils.length) facts.push(`Dataset suitable soils: ${soils.join(", ")}`);
       if (seeds.length) facts.push(`Dataset suggested seeds: ${seeds.join(", ")}`);
       if (seasons.length) facts.push(`Dataset seasons: ${seasons.join(", ")}`);
+      if (crops.length) facts.push(`Dataset suggested crops: ${crops.join(", ")}`);
       if (yieldValues.length) {
         const minYield = Math.min(...yieldValues);
         const maxYield = Math.max(...yieldValues);
         facts.push(`Dataset yield range: ${minYield.toFixed(0)} to ${maxYield.toFixed(0)}`);
+      }
+      if (intent === "crop_recommendation") {
+        const rankedCrops = rankCropCandidates(filtered, session);
+        if (rankedCrops.length) {
+          facts.push(`Dataset best crops: ${rankedCrops.slice(0, 4).map((item) => item.crop).join(", ")}`);
+          facts.push(`Dataset best crop: ${rankedCrops[0].crop}`);
+        }
       }
       if (["soil_suitability", "seed_soil_match", "crop_recommendation"].includes(intent)) {
         const rankedSoils = rankSoilCandidates(filtered, session);
@@ -578,6 +817,10 @@ async function buildKnowledgeContext(intent: ChatIntent, session: ChatSessionMem
 function extractDistrictState(location: string | null) {
   const raw = String(location || "").trim();
   if (!raw) return { district: "", state: "" };
+  const normalizedRaw = normalizeText(raw);
+  if (STATES.includes(normalizedRaw)) {
+    return { district: "", state: normalizedRaw };
+  }
   const districtMatch = raw.match(/^(.+?)\s+District(?:,\s*(.+))?$/i);
   if (districtMatch) {
     return {
@@ -588,6 +831,9 @@ function extractDistrictState(location: string | null) {
   const parts = raw.split(",").map((part) => normalizeText(part)).filter(Boolean);
   if (parts.length >= 2) {
     return { district: parts[0], state: parts[1] };
+  }
+  if (parts[0] && STATES.includes(parts[0])) {
+    return { district: "", state: parts[0] };
   }
   return { district: parts[0] || "", state: "" };
 }
@@ -853,6 +1099,7 @@ function buildFallbackResponse(
   const bestSeedFact = knowledgeContext.find((item) => item.startsWith("Dataset best seed:"));
   const bestSeedTypeFact = knowledgeContext.find((item) => item.startsWith("Dataset best seed type:"));
   const altSeedsFact = knowledgeContext.find((item) => item.startsWith("Dataset alternative seeds:"));
+  const bestCropsFact = knowledgeContext.find((item) => item.startsWith("Dataset best crops:"));
   const whyFact = knowledgeContext.find((item) => item.startsWith("Crop rule summary:"));
   const soilText = soilFact?.replace(/^.*?:\s*/, "");
   const bestSoilText = bestSoilFact?.replace(/^.*?:\s*/, "") || session.soil_type || "";
@@ -862,11 +1109,23 @@ function buildFallbackResponse(
   const bestSeedText = bestSeedFact?.replace(/^.*?:\s*/, "");
   const bestSeedTypeText = bestSeedTypeFact?.replace(/^.*?:\s*/, "");
   const altSeedText = altSeedsFact?.replace(/^.*?:\s*/, "");
+  const bestCropsText = bestCropsFact?.replace(/^.*?:\s*/, "");
   const targetedQuestion = buildTargetedQuestion(intent, session, missingFields);
+  const suitableConditions = Array.from(
+    new Set(
+      [
+        session.season ? titleCase(session.season) : "",
+        session.soil_type ? titleCase(session.soil_type) : "",
+        seasonFact?.replace(/^.*?:\s*/, "") || "",
+        soilFact?.replace(/^.*?:\s*/, "") || "",
+        intent === "crop_recommendation" && !session.crop ? "" : seedFact?.replace(/^.*?:\s*/, "") || ""
+      ].filter(Boolean)
+    )
+  ).slice(0, 6);
   const title =
     intent === "greeting"
       ? "Welcome to Subeej"
-      : cropLabel && locationLabel
+      : session.crop && locationLabel
         ? `${cropLabel} Guidance${locationLabel}`
         : "Agriculture Guidance";
 
@@ -877,6 +1136,15 @@ function buildFallbackResponse(
     recommendation = "I can help with crop recommendations, seed suitability, fertilizer guidance, disease queries, and yield estimates.";
     finalAnswer =
       "Hello. Ask me about crop recommendation, soil suitability, seed choice, fertilizer guidance, disease help, or yield estimation.";
+  } else if (intent === "crop_recommendation" && !session.crop) {
+    const seasonQualifier = session.season ? ` during ${titleCase(session.season)}` : "";
+    const soilQualifier = session.soil_type ? ` in ${titleCase(session.soil_type)}` : "";
+    recommendation = bestCropsText
+      ? `Best crop options${soilQualifier}${seasonQualifier} are ${bestCropsText}.`
+      : `The best crop options depend on season, soil type, irrigation, and local climate.`;
+    finalAnswer = bestCropsText
+      ? `${recommendation}${missingFields.length ? ` ${targetedQuestion}` : ""}`.trim()
+      : `${recommendation}${missingFields.length ? ` ${targetedQuestion}` : ""}`.trim();
   } else if (intent === "soil_suitability" || intent === "seed_soil_match" || intent === "crop_recommendation") {
     recommendation = session.crop
       ? bestSoilText
@@ -932,9 +1200,7 @@ function buildFallbackResponse(
     response_mode: responseMode,
     title,
     recommendation,
-    suitable_conditions: [seasonFact, soilFact, seedFact]
-      .filter(Boolean)
-      .map((item) => String(item).replace(/^.*?:\s*/, "")),
+    suitable_conditions: suitableConditions,
     why: whyFact?.replace(/^.*?:\s*/, "") || "",
     missing_details_needed: missingFields.slice(0, 2),
     follow_up_question: missingFields.length ? targetedQuestion : "",
@@ -966,10 +1232,25 @@ export async function handleUserMessage(params: HandleUserMessageParams) {
   const entities = extractEntities(params.message);
   if (params.imagePresent) entities.image_present = true;
 
-  const mergedMemory = mergeSession(session.memory, {
-    ...entities,
-    intent: intent === "unknown" ? session.memory.intent : intent
-  });
+  const broadCropSelection = intent === "crop_recommendation" && isBroadCropSelectionQuery(normalized, entities);
+  const resetFieldsForBroadCropSelection: Partial<ChatSessionMemory> = broadCropSelection
+    ? {
+        crop: null,
+        seed: null,
+        season: entities.season || null
+      }
+    : {};
+
+  const mergedMemory = mergeSession(
+    {
+      ...session.memory,
+      ...resetFieldsForBroadCropSelection
+    },
+    {
+      ...entities,
+      intent: intent === "unknown" ? session.memory.intent : intent
+    }
+  );
 
   const effectiveIntent = (intent === "unknown" ? mergedMemory.intent || "unknown" : intent) as ChatIntent;
   const inferredLocation = mergedMemory.location || (await inferLocationFromMessage(params.message)) || null;
@@ -1012,6 +1293,14 @@ export async function handleUserMessage(params: HandleUserMessageParams) {
     raw = "";
   }
   let structured = raw ? parseLLMResponse(raw, fallback) : fallback;
+  if (
+    effectiveIntent === "crop_recommendation" &&
+    !enrichedMemory.crop &&
+    Boolean(enrichedMemory.soil_type || enrichedMemory.land_quality) &&
+    Boolean(enrichedMemory.season || enrichedMemory.location)
+  ) {
+    structured = fallback;
+  }
   if (raw && isStructuredResponseTooGeneric(structured)) {
     try {
       const retryRaw = await callLLM(
@@ -1042,6 +1331,14 @@ export async function handleUserMessage(params: HandleUserMessageParams) {
   }
   const bestSoilFromContext = extractKnowledgeValue(llmInput.knowledge_context, "Dataset best soil:") || enrichedMemory.soil_type || "";
   const altSoilsFromContext = extractKnowledgeValue(llmInput.knowledge_context, "Dataset alternative soils:");
+  const mentionedSoils = extractMentionedSoils(normalized);
+  const comparisonResponse =
+    /\bcompare\b/.test(normalized) && effectiveIntent === "soil_suitability"
+      ? buildSoilComparisonResponse(enrichedMemory, mentionedSoils, responseMode)
+      : null;
+  if (comparisonResponse) {
+    structured = comparisonResponse;
+  }
   if (
     ["soil_suitability", "seed_soil_match", "crop_recommendation"].includes(effectiveIntent) &&
     /\bsoil\b/i.test(normalized) &&
