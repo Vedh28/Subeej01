@@ -20,6 +20,7 @@ import {
   resolveStateOption,
   SUPPORTED_STATE_OPTIONS
 } from "../lib/india-location-options";
+import { getApiUrl } from "../lib/api-base";
 
 const FieldMap = dynamic(() => import("../components/FieldMap"), { ssr: false });
 const Seed3DViewer = dynamic(() => import("../components/Seed3DViewer"), { ssr: false });
@@ -94,7 +95,7 @@ export default function Dashboard() {
     setAnalysisError("");
 
     try {
-      const response = await fetch("/api/field-analysis", {
+      const response = await fetch(getApiUrl("/api/field-analysis"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

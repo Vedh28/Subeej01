@@ -1,6 +1,7 @@
 import { MapContainer, TileLayer, LayersControl, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getApiUrl } from "../lib/api-base";
 
 const position: [number, number] = [22.9734, 78.6569];
 
@@ -127,7 +128,7 @@ export default function FieldMap({ onSelect }: FieldMapProps) {
       .then(safeSetGeo(setStateData))
       .catch(() => setStateData(null));
 
-    fetch("/api/field-map")
+    fetch(getApiUrl("/api/field-map"))
       .then((res) => res.json())
       .then((data) => setMapData(data as FieldMapData))
       .catch(() => setMapData(null));

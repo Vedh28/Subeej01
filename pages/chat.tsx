@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { readChatSessionState, StoredChatMessage, writeChatSessionState } from "../lib/chat-session-state";
+import { getApiUrl } from "../lib/api-base";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
@@ -68,7 +69,7 @@ async function requestChatReply(body: {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const response = await fetch("/api/llm/chat", {
+      const response = await fetch(getApiUrl("/api/llm/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)

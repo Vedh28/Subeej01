@@ -11,7 +11,7 @@ interface ChatOptions {
   history?: Message[];
 }
 
-type LlmProvider = "ollama" | "mistral_api" | "auto";
+export type LlmProvider = "ollama" | "mistral_api" | "huggingface" | "auto";
 
 async function parseJsonResponse<T>(response: Response, source: string) {
   const text = await response.text();
@@ -95,15 +95,39 @@ function getLlmConfig() {
     mistralApiKey: process.env.MISTRAL_API_KEY ?? "",
     mistralModel: process.env.MISTRAL_MODEL ?? "mistral-large-latest",
     mistralBaseUrl: process.env.MISTRAL_BASE_URL ?? "https://api.mistral.ai/v1",
+    huggingFaceApiKey: process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY ?? "",
+    huggingFaceModel: process.env.HUGGINGFACE_MODEL ?? "meta-llama/Llama-3.1-8B-Instruct",
+    huggingFaceBaseUrl: process.env.HUGGINGFACE_BASE_URL ?? "https://router.huggingface.co/v1",
     timeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 60000)
+  };
+}
+
+export function getLlmRuntimeConfig() {
+  const cfg = getLlmConfig();
+  return {
+    provider: cfg.provider,
+    fallbackProvider: cfg.fallbackProvider,
+    ollamaBaseUrl: cfg.ollamaBaseUrl,
+    ollamaModel: cfg.ollamaModel,
+    mistralBaseUrl: cfg.mistralBaseUrl,
+    mistralModel: cfg.mistralModel,
+    mistralApiKeyConfigured: Boolean(cfg.mistralApiKey),
+    huggingFaceBaseUrl: cfg.huggingFaceBaseUrl,
+    huggingFaceModel: cfg.huggingFaceModel,
+    huggingFaceApiKeyConfigured: Boolean(cfg.huggingFaceApiKey),
+    timeoutMs: cfg.timeoutMs
   };
 }
 
 function getProviderOrder(provider: LlmProvider, fallbackProvider: Exclude<LlmProvider, "auto"> | "") {
   if (provider === "auto") {
-    return fallbackProvider === "ollama"
-      ? (["mistral_api", "ollama"] as const)
-      : (["ollama", "mistral_api"] as const);
+    if (fallbackProvider === "ollama") {
+      return ["huggingface", "ollama"] as const;
+    }
+    if (fallbackProvider === "mistral_api") {
+      return ["huggingface", "mistral_api"] as const;
+    }
+    return ["huggingface", "mistral_api", "ollama"] as const;
   }
 
   if (!fallbackProvider || fallbackProvider === provider) {
@@ -176,6 +200,41 @@ async function callMistral(messages: Message[], options?: ChatOptions, signal?: 
   return (data.choices?.[0]?.message?.content || "").trim();
 }
 
+async function callHuggingFace(messages: Message[], options?: ChatOptions, signal?: AbortSignal) {
+  const cfg = getLlmConfig();
+  if (!cfg.huggingFaceApiKey) {
+    throw new Error("HUGGINGFACE_API_KEY or HF_TOKEN is missing.");
+  }
+
+  const stream = options?.stream ?? false;
+  const response = await fetch(`${cfg.huggingFaceBaseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cfg.huggingFaceApiKey}`
+    },
+    signal,
+    body: JSON.stringify({
+      model: cfg.huggingFaceModel,
+      temperature: options?.temperature ?? 0.1,
+      max_tokens: options?.maxTokens ?? 220,
+      top_p: options?.topP ?? 0.9,
+      stream,
+      messages
+    })
+  });
+
+  if (stream) {
+    return parseSseText(response, "Hugging Face API");
+  }
+
+  const data = await parseJsonResponse<{
+    choices?: Array<{ message?: { content?: string } }>;
+  }>(response, "Hugging Face API");
+
+  return (data.choices?.[0]?.message?.content || "").trim();
+}
+
 async function runChat(messages: Message[], options?: ChatOptions) {
   const cfg = getLlmConfig();
   const providerOrder = getProviderOrder(cfg.provider, cfg.fallbackProvider);
@@ -187,6 +246,9 @@ async function runChat(messages: Message[], options?: ChatOptions) {
     try {
       if (provider === "mistral_api") {
         return await callMistral(messages, options, controller.signal);
+      }
+      if (provider === "huggingface") {
+        return await callHuggingFace(messages, options, controller.signal);
       }
       return await callOllama(messages, options, controller.signal);
     } catch (error) {

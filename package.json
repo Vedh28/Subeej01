@@ -6,11 +6,16 @@
     "dev": "node scripts/dev-clean.js",
     "build": "next build && node scripts/export-public-css.js",
     "start": "node scripts/start-clean.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "backend:dev": "tsx watch backend/server.ts",
+    "backend:start": "tsx backend/server.ts"
   },
   "dependencies": {
     "@react-three/drei": "^9.109.2",
     "@react-three/fiber": "^8.18.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "leaflet": "^1.9.4",
     "next": "^14.2.15",
     "react": "^18.2.0",
@@ -24,9 +29,12 @@
     "@types/node": "25.4.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
     "typescript": "^5.7.2"
   }
 }
