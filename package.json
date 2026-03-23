@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "node scripts/dev-clean.js",
-    "build": "next build && node scripts/export-public-css.js",
+    "build": "next build frontend && node scripts/export-public-css.js",
     "start": "node scripts/start-clean.js",
     "lint": "next lint",
     "backend:dev": "tsx watch backend/server.ts",

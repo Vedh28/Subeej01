@@ -3,7 +3,9 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 
 const projectRoot = path.resolve(__dirname, "..");
-const nextDir = path.join(projectRoot, ".next");
+const appDirName = "frontend";
+const appDir = path.join(projectRoot, appDirName);
+const nextDir = path.join(appDir, ".next");
 
 if (existsSync(nextDir)) {
   rmSync(nextDir, { recursive: true, force: true });
@@ -11,7 +13,7 @@ if (existsSync(nextDir)) {
 }
 
 const nextBin = path.join(projectRoot, "node_modules", ".bin", process.platform === "win32" ? "next.cmd" : "next");
-const child = spawn(nextBin, ["dev", ...process.argv.slice(2)], {
+const child = spawn(nextBin, ["dev", appDirName, ...process.argv.slice(2)], {
   cwd: projectRoot,
   stdio: "inherit",
   shell: process.platform === "win32"

@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, LayersControl, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getApiUrl } from "../lib/api-base";
+import { getApiUrl } from "../../lib/api-base";
 
 const position: [number, number] = [22.9734, 78.6569];
 

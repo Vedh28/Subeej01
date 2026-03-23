@@ -3,12 +3,12 @@ setlocal
 cd /d "%~dp0"
 
 title Subeej Launcher
-if exist ".next\BUILD_ID" goto :start
+if exist "frontend\.next\BUILD_ID" goto :start
 
-if exist "next-build\BUILD_ID" (
+if exist "frontend\next-build.bak\BUILD_ID" (
   echo Restoring packaged Next build...
-  if exist .next rmdir /s /q .next
-  xcopy /e /i /q /y "next-build" ".next" >nul
+  if exist "frontend\.next" rmdir /s /q "frontend\.next"
+  xcopy /e /i /q /y "frontend\next-build.bak" "frontend\.next" >nul
   if errorlevel 1 (
     echo.
     echo Failed to restore the packaged build from next-build.
@@ -19,7 +19,7 @@ if exist "next-build\BUILD_ID" (
 )
 
 :build
-if not exist "pages" (
+if not exist "frontend\pages" (
   echo.
   echo No production build was found, and source files are not available to rebuild it.
   echo Run this package using launch-subeej.cmd from the full share ZIP.

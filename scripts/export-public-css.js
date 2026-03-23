@@ -2,8 +2,9 @@ const { copyFileSync, existsSync, mkdirSync, readdirSync } = require("node:fs");
 const path = require("node:path");
 
 const projectRoot = path.resolve(__dirname, "..");
-const nextCssDir = path.join(projectRoot, ".next", "static", "css");
-const publicDir = path.join(projectRoot, "public");
+const appDir = path.join(projectRoot, "frontend");
+const nextCssDir = path.join(appDir, ".next", "static", "css");
+const publicDir = path.join(appDir, "public");
 const publicCssTarget = path.join(publicDir, "app-static.css");
 
 function exportCss() {

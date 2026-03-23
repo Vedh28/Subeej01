@@ -13,14 +13,14 @@ import {
   DashboardAnalysisState,
   readDashboardAnalysisState,
   writeDashboardAnalysisState
-} from "../lib/dashboard-analysis-state";
+} from "../../lib/dashboard-analysis-state";
 import {
   DISTRICTS_BY_STATE,
   resolveDistrictOption,
   resolveStateOption,
   SUPPORTED_STATE_OPTIONS
-} from "../lib/india-location-options";
-import { getApiUrl } from "../lib/api-base";
+} from "../../lib/india-location-options";
+import { getApiUrl } from "../../lib/api-base";
 
 const FieldMap = dynamic(() => import("../components/FieldMap"), { ssr: false });
 const Seed3DViewer = dynamic(() => import("../components/Seed3DViewer"), { ssr: false });

@@ -52,18 +52,21 @@ The application is designed for agriculture-focused conversations. Instead of on
 
 ```text
 Subeej-demo/
-├─ components/            Reusable UI blocks for chat, maps, dashboards, and field views
-├─ data/
+├─ frontend/              Next.js app source
+│  ├─ components/         Reusable UI blocks for chat, maps, dashboards, and field views
+│  ├─ pages/              Frontend routes and legacy in-app API endpoints
+│  ├─ public/             Static assets such as maps and generated CSS
+│  ├─ styles/             Global styling
+│  ├─ .env.local.example  Frontend and shared local environment template
+│  └─ next.config.js      Frontend Next.js configuration
+├─ backend/               Express API service for split deployments
+├─ database/
 │  └─ source/             Agriculture dataset used for recommendation grounding
 ├─ lib/                   Core business logic, LLM client, prompts, and recommendation engine
 ├─ outputs/               Ollama model definition and model-related generated assets
-├─ pages/                 Next.js pages and API routes
-│  └─ api/                Server-side endpoints for chat, recommendations, and analysis
-├─ public/                Static assets such as maps and generated CSS
 ├─ scripts/               Development, build, export, and training helper scripts
 ├─ seed-intelligence-ai/  Python-side AI pipeline, training, vector store, and RAG utilities
-├─ styles/                Global styling
-├─ .env.local.example     Example environment configuration
+├─ .env.railway.example   Backend deployment environment template
 ├─ launch-subeej.cmd      Windows launcher for the packaged app
 ├─ package.json           Node scripts and dependency manifest
 └─ README.md              Project overview and setup guide
@@ -71,17 +74,17 @@ Subeej-demo/
 
 ## Main Directories Explained
 
-### `pages/`
+### `frontend/`
 
-Contains the frontend routes and the legacy in-app API endpoints used for local all-in-one runs.
+Contains the Next.js application, including routes, UI components, static assets, styles, and the frontend-local environment template.
 
 ### `backend/`
 
 Contains the Railway-ready Express API service for chat, recommendation, field analysis, map data, and seed visuals.
 
-### `components/`
+### `database/`
 
-Contains reusable frontend UI components such as chat panels, maps, cards, charts, and layout elements.
+Contains the dataset files used for recommendation grounding and field intelligence lookups.
 
 ### `lib/`
 
@@ -125,7 +128,7 @@ npm install
 Create a local environment file from the example:
 
 ```bash
-cp .env.local.example .env.local
+cp frontend/.env.local.example frontend/.env.local
 ```
 
 Then update values as needed for your setup.
@@ -177,7 +180,7 @@ Typical environment values include:
 
 Use these files as a guide:
 
-- `.env.netlify.example` for Netlify environment variables
+- `frontend/.env.netlify.example` for Netlify environment variables
 - `.env.railway.example` for Railway environment variables
 - `netlify.toml` for Netlify build settings
 - `railway.json` for Railway start and healthcheck settings
@@ -213,7 +216,7 @@ HUGGINGFACE_BASE_URL=https://router.huggingface.co/v1
 
 ### Mistral API Integration
 
-If you want to use Mistral directly, add your key in `.env.local` and switch the provider:
+If you want to use Mistral directly, add your key in `frontend/.env.local` and switch the provider:
 
 ```env
 LLM_PROVIDER=mistral_api
@@ -232,7 +235,7 @@ MISTRAL_API_KEY=your_mistral_api_key
 MISTRAL_MODEL=mistral-large-latest
 ```
 
-After updating `.env.local`, restart the app and verify provider status at `/api/llm/health`.
+After updating `frontend/.env.local`, restart the app and verify provider status at `/api/llm/health`.
 
 ## Repository Notes
 

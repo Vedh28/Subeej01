@@ -4,7 +4,7 @@ import { Head, Html, Main, NextScript } from "next/document";
 
 function getInlineCss() {
   const projectRoot = process.cwd();
-  const publicCssPath = path.join(projectRoot, "public", "app-static.css");
+  const publicCssPath = path.join(projectRoot, "frontend", "public", "app-static.css");
 
   if (!fs.existsSync(publicCssPath)) {
     return "";

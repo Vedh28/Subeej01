@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { loadDatasetRows } from "../../lib/recommendation/dataset";
+import { loadDatasetRows } from "../../../lib/recommendation/dataset";
 
 function normalizeKey(value: string) {
   return value

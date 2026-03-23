@@ -1,4 +1,6 @@
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { config as loadEnv } from "dotenv";
 import cors from "cors";
 import express from "express";
 import { handleUserMessage } from "../lib/chat-controller";
@@ -7,6 +9,21 @@ import { checkLlmHealth } from "../lib/llm-health";
 import { loadDatasetRows } from "../lib/recommendation/dataset";
 import { runRecommendation } from "../lib/recommendation/engine";
 import type { RecommendationInput } from "../lib/recommendation/types";
+
+const projectRoot = process.cwd();
+
+for (const envPath of [
+  path.join(projectRoot, "backend", ".env.local"),
+  path.join(projectRoot, "backend", ".env"),
+  path.join(projectRoot, "frontend", ".env.local"),
+  path.join(projectRoot, "frontend", ".env"),
+  path.join(projectRoot, ".env.local"),
+  path.join(projectRoot, ".env")
+]) {
+  if (existsSync(envPath)) {
+    loadEnv({ path: envPath, override: false });
+  }
+}
 
 interface RecommendationRequestBody {
   field_input?: Partial<RecommendationInput>;

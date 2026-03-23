@@ -1,8 +1,12 @@
 .env.local
+frontend/.env.local
 .next/
+frontend/.next/
 node_modules/
 next-build.bak/
+frontend/next-build.bak/
 tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
 *.log
 *.err.log
 *.zip

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { analyzeFieldImage, enrichFieldImageAnalysis } from "../../lib/field-image-analysis";
+import { analyzeFieldImage, enrichFieldImageAnalysis } from "../../../lib/field-image-analysis";
 
 interface FieldAnalysisBody {
   image_data_url?: string;

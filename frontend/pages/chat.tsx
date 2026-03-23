@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
-import { readChatSessionState, StoredChatMessage, writeChatSessionState } from "../lib/chat-session-state";
-import { getApiUrl } from "../lib/api-base";
+import { readChatSessionState, StoredChatMessage, writeChatSessionState } from "../../lib/chat-session-state";
+import { getApiUrl } from "../../lib/api-base";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 

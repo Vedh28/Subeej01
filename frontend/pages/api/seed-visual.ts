@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { loadDatasetRows } from "../../lib/recommendation/dataset";
+import { loadDatasetRows } from "../../../lib/recommendation/dataset";
 
 type SeedVisualProfile = {
   shape: "sphere" | "oval" | "flat-oval" | "elongated" | "kidney";

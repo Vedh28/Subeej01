@@ -3,10 +3,12 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 
 const projectRoot = path.resolve(__dirname, "..");
-const nextServerDir = path.join(projectRoot, ".next", "server");
+const appDirName = "frontend";
+const appDir = path.join(projectRoot, appDirName);
+const nextServerDir = path.join(appDir, ".next", "server");
 const nextChunksDir = path.join(nextServerDir, "chunks");
-const nextCssDir = path.join(projectRoot, ".next", "static", "css");
-const publicDir = path.join(projectRoot, "public");
+const nextCssDir = path.join(appDir, ".next", "static", "css");
+const publicDir = path.join(appDir, "public");
 const publicCssTarget = path.join(publicDir, "app-static.css");
 
 function syncServerChunks() {
@@ -52,7 +54,7 @@ syncServerChunks();
 syncPublicCss();
 
 const nextBin = path.join(projectRoot, "node_modules", ".bin", process.platform === "win32" ? "next.cmd" : "next");
-const child = spawn(nextBin, ["start", ...process.argv.slice(2)], {
+const child = spawn(nextBin, ["start", appDirName, ...process.argv.slice(2)], {
   cwd: projectRoot,
   stdio: "inherit",
   shell: process.platform === "win32"

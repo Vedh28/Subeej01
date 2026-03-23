@@ -64,6 +64,7 @@ function resolveDatasetPath() {
   const configured = process.env.DATASET_CSV_PATH;
   const candidates = [
     configured,
+    path.join(process.cwd(), "database", "source", "agriculture_seed_land_dataset_10000_rows_with_field_composition.csv"),
     path.join(process.cwd(), "data", "source", "agriculture_seed_land_dataset_10000_rows_with_field_composition.csv"),
     "C:\\Users\\vedhp\\Downloads\\agriculture_seed_land_dataset_10000_rows_with_field_composition.csv"
   ].filter(Boolean) as string[];
@@ -89,7 +90,7 @@ export async function loadDatasetRows() {
 
   if (!file) {
     throw new Error(
-      "Dataset CSV not found. Set DATASET_CSV_PATH or place CSV in data/source/ directory."
+      "Dataset CSV not found. Set DATASET_CSV_PATH or place CSV in database/source/ directory."
     );
   }
 

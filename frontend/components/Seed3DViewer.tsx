@@ -2,7 +2,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CanvasTexture, Color, Mesh, RepeatWrapping, SphereGeometry, SRGBColorSpace, Vector2, Vector3 } from "three";
-import { getApiUrl } from "../lib/api-base";
+import { getApiUrl } from "../../lib/api-base";
 
 type SeedVisualProfile = {
   shape: "sphere" | "oval" | "flat-oval" | "elongated" | "kidney";

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { runRecommendation } from "../../lib/recommendation/engine";
-import { RecommendationInput } from "../../lib/recommendation/types";
+import { runRecommendation } from "../../../lib/recommendation/engine";
+import { RecommendationInput } from "../../../lib/recommendation/types";
 
 interface RecommendationRequestBody {
   field_input?: Partial<RecommendationInput>;

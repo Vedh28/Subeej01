@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import Seed3DViewer from "../components/Seed3DViewer";
 import AnalysisCard from "../components/AnalysisCard";
-import { defaultDashboardAnalysis, readDashboardAnalysisState } from "../lib/dashboard-analysis-state";
+import { defaultDashboardAnalysis, readDashboardAnalysisState } from "../../lib/dashboard-analysis-state";
 
 export default function SeedIntelligencePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

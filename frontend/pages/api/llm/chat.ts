@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { handleUserMessage } from "../../../lib/chat-controller";
+import { handleUserMessage } from "../../../../lib/chat-controller";
 
 interface ChatRequestBody {
   message?: string;
