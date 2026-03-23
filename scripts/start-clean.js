@@ -54,7 +54,7 @@ syncServerChunks();
 syncPublicCss();
 
 const nextBin = path.join(projectRoot, "node_modules", ".bin", process.platform === "win32" ? "next.cmd" : "next");
-const child = spawn(nextBin, ["start", appDirName, ...process.argv.slice(2)], {
+const child = spawn(nextBin, ["start", appDirName, "-H", "0.0.0.0", ...process.argv.slice(2)], {
   cwd: projectRoot,
   stdio: "inherit",
   shell: process.platform === "win32"
